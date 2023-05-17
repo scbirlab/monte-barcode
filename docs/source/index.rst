@@ -12,7 +12,7 @@
 
    installation
    usage
-   modules
+   api
 
 Source
 ------

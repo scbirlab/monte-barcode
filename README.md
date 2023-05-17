@@ -1,5 +1,8 @@
 # 🔴🟢🔵⚫️ monte barcode
 
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/monte-barcode)
+![PyPI](https://img.shields.io/pypi/v/monte-barcode)
+
 Generating sets of random DNA sequences optimized for use in high-throughput sequencing.
 
 ## Installation
@@ -317,4 +320,4 @@ retrieving failure reasons, number of tries, and conforming barcode set.
 
 ### Documentation
 
-Full API documnetation is [here](https://monte-barcode.readthedocs.org).
+Full API documentation is [here](https://monte-barcode.readthedocs.org).

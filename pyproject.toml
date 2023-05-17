@@ -39,6 +39,11 @@ dependencies = [
 [project.scripts]  # Optional
 monte = "montebarcode.cli:main"
 
+[tool.setuptools]
+# If there are data files included in your packages that need to be
+# installed, specify them here.
+package-data = {"montebarcode" = ["*.yml"]}
+
 [build-system]
 # These are the assumed default build requirements from pip:
 # https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support

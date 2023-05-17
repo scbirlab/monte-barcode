@@ -1,0 +1,6 @@
+pyyaml
+myst_parser
+streq
+nemony
+tqdm
+./

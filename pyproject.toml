@@ -1,0 +1,46 @@
+[project]
+name = "monte-barcode"
+version = "0.0.1"
+authors = [
+  { name="Eachan Johnson", email="eachan.johnson@crick.ac.uk" },
+]
+description = "Generating sets of random DNA sequences optimized for use in high-throughput sequencing."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+keywords = ["barcodes", "sequencing", "science", "assay"]
+
+classifiers = [  
+  
+  "Development Status :: 3 - Alpha",
+
+  # Indicate who your project is intended for
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+
+  "License :: OSI Approved :: MIT License",
+
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+dependencies = [ 
+  "streq",
+  "nemony",
+  "tqdm",
+  "pyyaml"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/scbirlab/monte-barcode"
+"Bug Tracker" = "https://github.com/scbirlab/monte-barcode/issues"
+
+[project.scripts]  # Optional
+monte = "montebarcode.cli:main"
+
+[build-system]
+# These are the assumed default build requirements from pip:
+# https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"

@@ -1,6 +1,6 @@
 [project]
 name = "monte-barcode"
-version = "0.0.1"
+version = "0.0.1post1"
 authors = [
   { name="Eachan Johnson", email="eachan.johnson@crick.ac.uk" },
 ]

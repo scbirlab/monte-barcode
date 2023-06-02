@@ -11,7 +11,7 @@ docs/_autosummary
 .vscode
 .envrc
 __pycache__
-.pytest_cache/
+.pytest_cache
 
 # virtualenv/venv directories
 /venv/

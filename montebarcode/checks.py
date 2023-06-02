@@ -1,5 +1,7 @@
 """Functions to check that barcodes conform."""
 
+from __future__ import annotations
+
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from collections import Counter, defaultdict
 from itertools import zip_longest

@@ -1,11 +1,13 @@
 """Command-line interface for monte-barcode."""
 
-from typing import TextIO
+from __future__ import annotations
+
+from typing import TextIO, Union
 from collections.abc import Callable, Mapping, Sequence
 import argparse
 import csv
 from functools import reduce
-from itertools import permutations
+from itertools import chain, permutations
 from math import factorial
 import operator
 import sys
@@ -14,16 +16,22 @@ import nemony as nm
 import streq as sq
 from tqdm import tqdm
 
-from .generate import codon_barcodes, infinite_barcodes
+from .generate import codon_barcodes, infinite_barcodes, transition_matrix
 from . import checks
 from .utils import pprint_dict, _CODONS
 
 
 def _reader(input: TextIO, 
-            field: int) -> Sequence[str]:
+            field: Union[int, str]) -> Sequence[str]:
 
-    infile = csv.reader(input, delimiter='\t')
-    barcode_list = [row[field - 1] for row in infile]
+    if field.isdigit():
+        infile = csv.reader(input, delimiter='\t')
+        key = int(field) - 1
+    else:
+        infile = csv.DictReader(input, delimiter='\t')
+        key = field
+
+    barcode_list = [row[key] for row in infile]
     alphabet_used = set(letter for bc in barcode_list for letter in list(bc))
 
     assert all(letter in sq.sequences.DNA for letter in alphabet_used),\
@@ -43,10 +51,11 @@ def _writer(output: TextIO,
                          delimiter='\t')
     min_distance, max_distance = checks.minmax_distance(barcodes, levenshtein)
     n = len(barcodes)
-    
+
     try:
 
         for i, barcode in enumerate(barcodes):
+
             row = (f'{barcode_set_name}:'
                    f'l{len(barcode)}-n{n}-d{min_distance}:'
                    f'x{i}:{nm.encode(barcode)}'), barcode
@@ -169,7 +178,6 @@ def sort_barcodes(args: argparse.Namespace) -> None:
         _, barcodes = _check_permutations(remaining_barcodes, 
                                           checklist,
                                           constant=list(starter_barcodes))
-        # barcodes = list(starter_barcodes) + list(barcodes)
 
     if len(barcodes) < len(barcode_list):
 
@@ -200,7 +208,7 @@ def generate(args: argparse.Namespace) -> None:
     pprint_dict(vars(args), 
                 'Generating barcodes with the following parameters')
     
-    if args.amino_acid is not None:
+    if args.subcommand != 'sample' and args.amino_acid is not None:
 
         invalid_aa = [aa for aa in args.amino_acid if aa not in _CODONS]
 
@@ -216,15 +224,31 @@ def generate(args: argparse.Namespace) -> None:
 
     else:
 
-        length = args.length
-        alphabet_length = len(sq.sequences.DNA)
-        combinations = alphabet_length ** args.length
+        if args.subcommand == 'sample':
+            barcode_list = _reader(args.input, args.field)
+            alphabet = transition_matrix(barcode_list)
+            length = len(alphabet)
+            alphabet_length = len(list(set(chain(*barcode_list))))
+            check_used = False
+            # TODO: Currently is an upper limit; make accurate.
+            combinations = reduce(operator.mul, 
+                                  (len(letters) for position in alphabet 
+                                   for key, (letters, _) in position.items() 
+                                   if key is not None))
+        else:
+            length = args.length
+            alphabet = sq.sequences.DNA
+            alphabet_length = len(alphabet)
+            check_used = False
+            combinations = alphabet_length ** length
 
         print(f'Requested barcodes with length {length},',
               f'and {combinations} possible combinations.',
               file=sys.stderr)
         
-        barcodes = infinite_barcodes(length)
+        barcodes = infinite_barcodes(length,
+                                     alphabet=alphabet,
+                                     check_used=check_used)
     
     assert combinations > args.number,\
             f'There are not {args.number} unique {length}-mers. '\
@@ -255,22 +279,29 @@ def main() -> None:
     sort = subcommands.add_parser('sort', 
                                   help='Sort barcode list for optimal color balance.')
     sort.set_defaults(func=sort_barcodes)
+    sample = subcommands.add_parser('sample', 
+                                  help='Generate barcode list by sampling nucleotides from an existing list of sequences.')
+    sample.set_defaults(func=generate)
     
-    barcode.add_argument('--number', '-n', 
-                         type=int, required=True,
-                         help='Number of barcodes to generate. Required.')
+   
     barcode.add_argument('--length', '-l', 
                          type=int, default=12,
                          help='Barcode length. Default: %(default)s')
-    barcode.add_argument('--rejection-rate', '-r', 
-                         type=float, default=.85,
-                         help='Rate of rejection before aborting. Default: %(default)s')
     barcode.add_argument('--amino-acid', '-a', 
                          type=str, 
                          default=None,
                          help='Generate barcodes encoding this amino acid sequence. Default: do not use.')
     
-    for p in (barcode, check):
+    for p in (barcode, sample):
+
+        p.add_argument('--number', '-n', 
+                       type=int, required=True,
+                       help='Number of barcodes to generate. Required.')
+        p.add_argument('--rejection-rate', '-r', 
+                       type=float, default=.85,
+                       help='Rate of rejection before aborting. Default: %(default)s')
+    
+    for p in (barcode, check, sample):
     
         p.add_argument('--distance', '-d', 
                        type=int, default=1,
@@ -292,19 +323,19 @@ def main() -> None:
                        type=float, default=.6,
                        help='Maximum GC content. Default: %(default)s')
         
-    for p in (check, sort):
+    for p in (check, sort, sample):
 
         p.add_argument('input',
-                    type=argparse.FileType('r'),
-                    nargs='?',
-                    default=sys.stdin,
-                    help='Input file. Default: STDIN.')
+                       type=argparse.FileType('r'),
+                       nargs='?',
+                       default=sys.stdin,
+                       help='Input file. Default: STDIN.')
         p.add_argument('--field', '-f',
-                    type=int,
-                    default=1,
-                    help='Column number for barcode sequences. Default: %(default)s')
+                       type=str,
+                       default='1',
+                       help='Column number for barcode sequences. Default: %(default)s')
         
-    for p in (barcode, check, sort):
+    for p in (barcode, check, sort, sample):
 
         p.add_argument('--output', '-o', 
                        type=argparse.FileType('w'),

@@ -18,8 +18,7 @@ from tqdm import tqdm
 
 from .generate import codon_barcodes, infinite_barcodes, transition_matrix
 from . import checks
-from .utils import pprint_dict, _CODONS
-
+from .utils import _print_err, pprint_dict, _CODONS
 
 def _reader(input: TextIO, 
             field: Union[int, str]) -> Sequence[str]:
@@ -67,16 +66,16 @@ def _writer(output: TextIO,
 
     distance = 'Levenshtein' if levenshtein else 'Hamming'
         
-    print(f'Wrote barcode set called {barcode_set_name},',
-          f'with minimum {distance} distance {min_distance} and',
-          f'maximum {distance} distance {max_distance}.', 
-          file=sys.stderr)
+    _print_err(f'Wrote barcode set called {barcode_set_name},',
+               f'with minimum {distance} distance {min_distance} and',
+               f'maximum {distance} distance {max_distance}.')
     
     return None
 
 
 def _checker(args: argparse.Namespace, 
-             barcode_list: Sequence[str]) -> Sequence[str]:
+             barcode_list: Sequence[str],
+             initial: Sequence[str] = []) -> Sequence[str]:
 
     checklist = [checks.Identities(), 
                  checks.Palindrome(),
@@ -97,17 +96,18 @@ def _checker(args: argparse.Namespace,
         n = args.number
         max_rejection_rate = args.rejection_rate
 
-    _, _, barcodes = checks.make_checks(barcode_list,
-                                 n=n, 
-                                 max_rejection_rate=max_rejection_rate,
-                                 checks=checklist)
+    (_, _, 
+     barcodes) = checks.make_checks(barcode_list,
+                                    n=n, 
+                                    max_rejection_rate=max_rejection_rate,
+                                    checks=checklist,
+                                    initial=initial)
     
     if len(barcodes) < n:
 
-        print(f'WARNING: Could only generate {len(barcodes)} barcodes,',
-              f'but {n} were requested.',
-              'You might need to try different settings.',
-              file=sys.stderr)
+        _print_err(f'WARNING: Could only generate {len(barcodes)} barcodes,',
+                   f'but {n} were requested.',
+                   'You might need to try different settings.')
     
     _writer(args.output, barcodes, args.levenshtein)
 
@@ -182,10 +182,9 @@ def sort_barcodes(args: argparse.Namespace) -> None:
 
     if len(barcodes) < len(barcode_list):
 
-        print(f'Could only generate {len(barcodes)} barcodes,',
-              f'but {len(barcode_list)} were provided.',
-              'You might need to try different settings.',
-              file=sys.stderr)
+        _print_err(f'Could only generate {len(barcodes)} barcodes,',
+                   f'but {len(barcode_list)} were provided.',
+                   'You might need to try different settings.')
 
     _writer(args.output, barcodes)
     
@@ -218,9 +217,9 @@ def generate(args: argparse.Namespace) -> None:
 
         length = len(args.amino_acid) * 3
         combinations = reduce(operator.mul, (len(_CODONS[aa]) for aa in args.amino_acid))
-        print(f'Using amino acid sequence {args.amino_acid} with',
-              f'length {length} and {combinations} possible combinations.',
-              file=sys.stderr)
+        
+        _print_err(f'Using amino acid sequence {args.amino_acid} with',
+                   f'length {length} and {combinations} possible combinations.')
         
         barcodes = codon_barcodes(args.amino_acid)
 
@@ -246,20 +245,27 @@ def generate(args: argparse.Namespace) -> None:
             check_used = False
             combinations = alphabet_length ** length
 
-        print(f'Requested barcodes with length {length},',
-              f'and {combinations} possible combinations.',
-              file=sys.stderr)
+        _print_err(f'Requested barcodes with length {length},',
+                   f'and {combinations} possible combinations.')
         
         barcodes = infinite_barcodes(length,
                                      alphabet=alphabet,
                                      check_used=check_used)
+        
+    if args.append is not None:
+
+        initial = _reader(args.append, args.append_field)
+
+    else:
+
+        initial = []
     
     assert combinations > args.number,\
             f'There are not {args.number} unique {length}-mers. '\
             f'Maximum is {combinations}. You might need to try'\
             'different settings.'
 
-    barcodes = _checker(args, barcodes)
+    barcodes = _checker(args, barcodes, initial=initial)
 
     return None
     
@@ -305,6 +311,14 @@ def main() -> None:
         p.add_argument('--rejection-rate', '-r', 
                        type=float, default=.85,
                        help='Rate of rejection before aborting. Default: %(default)s')
+        p.add_argument('--append', 
+                       type=argparse.FileType('r'), 
+                       default=None,
+                       help='File to take a list of barcodes to extend. Default: do not use')
+        p.add_argument('--append_field', 
+                       type=str, 
+                       default='1',
+                       help='Column name or number to take barcodes from for appending. Default: %(default)s')
     
     for p in (barcode, check, sample):
     
@@ -338,7 +352,7 @@ def main() -> None:
         p.add_argument('--field', '-f',
                        type=str,
                        default='1',
-                       help='Column number for barcode sequences. Default: %(default)s')
+                       help='Column name or number for barcode sequences. Default: %(default)s')
         
     for p in (barcode, check, sort, sample):
 

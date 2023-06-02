@@ -9,11 +9,11 @@ import sys
 
 import streq as sq
 
-from .utils import pprint_dict
+from .utils import _print_err, pprint_dict
 
 
 def _print_rejection_reasons(x: Mapping, 
-                            n_tried: str) -> None:
+                             n_tried: str) -> None:
     
     key_val_str = {name: (s / n_tried) 
                    for name, s in x.items()}
@@ -453,6 +453,7 @@ def make_checks(barcodes: Iterable[str],
                 checks: Iterable[Callable[[str, Sequence], bool]],
                 max_rejection_rate: float = 1.,
                 max_tries: int = 10000,
+                initial: Sequence[str] = None,
                 quiet: bool = False) -> Sequence[dict, int, Sequence[str]]:
     
     """Check barcode list conforms to the checks.
@@ -464,7 +465,8 @@ def make_checks(barcodes: Iterable[str],
     barcodes : Iterable[str]
         List or generator of barcodes to check.
     n : int
-        Minimum number of barcodes to accept. Stops when this is reached.
+        Minimum number of barcodes to accept. Stops when this is reached or
+        checked all barcodes.
     checks : Iterable
         List of functions which take a candidate barcode and 
         previous barcodes as arguments and return True if the
@@ -475,6 +477,8 @@ def make_checks(barcodes: Iterable[str],
         Rejection rate above which to terminate. Default: 1.
     max_tries : int, optional
         Number of barcodes to try before enforcing `max_rejection_rate`. Default 100000.
+    initial : list, optional
+        An initial list to append new barcodes. 
     quiet : bool, optional
         Whether to report progress. Default: True.
     
@@ -506,10 +510,16 @@ def make_checks(barcodes: Iterable[str],
     (Counter({'homopolymer': 1, 'palindrome': 1}), 4, ['ATCGCG', 'GCCGAT'])
     >>> make_checks(['AAAAT', 'CCCGGG', 'ATCGCG', 'GCCGAT'], 1, checks=checks, quiet=True)  # doctest: +NORMALIZE_WHITESPACE
     (Counter({'homopolymer': 1, 'palindrome': 1}), 3, ['ATCGCG'])
+    >>> #
+    >>> make_checks(['AAAAT', 'CCCGGG', 'ATCGCG', 'GCCGAT'], 1, checks=checks, initial=['ATCGCG'], quiet=True)   # doctest: +NORMALIZE_WHITESPACE
+    (Counter({'homopolymer': 1, 'palindrome': 1}), 3, ['ATCGCG', 'ATCGCG'])
+    >>> checks = [Homopolymer(), Palindrome(), Identities()] 
+    >>> make_checks(['AAAAT', 'CCCGGG', 'ATCGCG', 'GCCGAT'], 1, checks=checks, initial=['ATCGCG'], quiet=True)   # doctest: +NORMALIZE_WHITESPACE
+    (Counter({'homopolymer': 1, 'palindrome': 1, 'identity': 1}), 4, ['ATCGCG', 'GCCGAT'])
 
     """
     
-    accepted_barcodes = []
+    accepted_barcodes = initial or []
     fail_tally = Counter()
     n_tried, n_rejected, n_accepted = 0, 0, 0
     rejection_rate = 0.
@@ -541,15 +551,15 @@ def make_checks(barcodes: Iterable[str],
         else:
             
             accepted_barcodes.append(new_barcode)
-            n_accepted = len(accepted_barcodes)
+            n_accepted += 1
 
         rejection_rate =  n_rejected / n_tried
         
         if not quiet:
-            print(f'\r> Tried {n_tried} barcodes,',
-                f'rejected {n_rejected}, accepted {n_accepted};',
-                f'rejection rate is {rejection_rate:.2f}',
-                file=sys.stderr, end='')
+            _print_err(f'\r> Tried {n_tried} barcodes,',
+                       f'rejected {n_rejected}, accepted {n_accepted};',
+                       f'rejection rate is {rejection_rate:.2f}',
+                       end='')
         
         if n_accepted >= n:
 

@@ -63,7 +63,10 @@ def minmax_distance(x: Sequence[str],
                      for i, seq1 in enumerate(x) 
                      for j, seq2 in enumerate(x) if i != j]
     
-    return min(all_distances), max(all_distances)
+    try:
+        return min(all_distances), max(all_distances)
+    except ValueError:
+        return 0, 0
         
 
 def Distance(min_distance: int = 2,

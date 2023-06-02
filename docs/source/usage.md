@@ -126,8 +126,38 @@ Wrote barcode set called thorough_adam, with minimum Hamming distance 4 and maxi
 
 ```
 
-And try to sort by ideal color balance for Illumina chemistries (if you want to use subsets).
+Or use a previous set as a starting point for generating more, possibly with different parameters.
 
+```bash
+$ monte barcode -n10 --distance 4 --length 10  --append <(monte barcode -n 5 -a HELP) --append_field 2
+Generating barcodes with the following parameters:
+...
+> Tried 32 barcodes, rejected 22, accepted 10; rejection rate is 0.69
+
+Rejection reasons:
+        gc_content: 0.44
+        homopolymer: 0.47
+        distance: 0.03
+        palindrome: 0.03
+elegant_triton:l12-n15-d1:x0:vocal_stand        CACGAACTTCCT
+elegant_triton:l12-n15-d1:x1:real_clinic        CATGAATTGCCT
+elegant_triton:l12-n15-d1:x2:dextrous_frame     CACGAATTACCG
+elegant_triton:l12-n15-d1:x3:dizzy_record       CACGAATTACCT
+elegant_triton:l12-n15-d1:x4:prudent_jester     CACGAGCTACCA
+elegant_triton:l10-n15-d1:x5:useful_cabinet     ACGCGACACT
+elegant_triton:l10-n15-d1:x6:deafening_sphere   TAATACGCGC
+elegant_triton:l10-n15-d1:x7:old_program        ATCCTAAGCC
+elegant_triton:l10-n15-d1:x8:eager_doctor       TTGGCCACTG
+elegant_triton:l10-n15-d1:x9:dopey_limbo        ATCCGTCGTA
+elegant_triton:l10-n15-d1:x10:plain_lunar       ACGAGAATTC
+elegant_triton:l10-n15-d1:x11:discreet_ford     CTAACGTAGC
+elegant_triton:l10-n15-d1:x12:proud_jet CTTCAGTGTC
+elegant_triton:l10-n15-d1:x13:wry_insect        CAGACTGGAG
+elegant_triton:l10-n15-d1:x14:lofty_shave       TTCGTAACTC
+Wrote barcode set called elegant_triton, with minimum Hamming distance 1 and maximum Hamming distance 10.
+```
+
+And try to sort by ideal color balance for Illumina chemistries (if you want to use subsets).
 
 ```bash
 $ monte barcode --length 6 -n 15 -d 1 2> /dev/null | monte sort --field 2
@@ -154,21 +184,39 @@ Wrote barcode set called round_mono, with minimum Hamming distance 2 and maximum
 ### Details
 
 ```bash
-usage: monte barcode [-h] --number NUMBER [--length LENGTH] [--rejection-rate REJECTION_RATE]
-                     [--amino-acid AMINO_ACID] [--distance DISTANCE] [--homopolymer HOMOPOLYMER]
-                     [--levenshtein] [--color] [--gc_min GC_MIN] [--gc_max GC_MAX]
-                     [--output OUTPUT]
+usage: monte [-h] {barcode,check,sort,sample} ...
 
-options:
+Generate random DNA barcodes conforming to contraints, or check sets of barcodes for their conformance.
+
+optional arguments:
   -h, --help            show this help message and exit
-  --number NUMBER, -n NUMBER
-                        Number of barcodes to generate. Required.
+
+Sub-commands:
+  {barcode,check,sort,sample}
+                        Use these commands to specify the action you want.
+    barcode             Generate random barcodes.
+    check               Check barcode list.
+    sort                Sort barcode list for optimal color balance.
+    sample              Generate barcode list by sampling nucleotides from an existing list of sequences.
+```
+
+```bash
+usage: monte barcode [-h] [--length LENGTH] [--amino-acid AMINO_ACID] --number NUMBER [--rejection-rate REJECTION_RATE] [--append APPEND] [--append_field APPEND_FIELD] [--distance DISTANCE]
+                     [--homopolymer HOMOPOLYMER] [--levenshtein] [--color] [--gc_min GC_MIN] [--gc_max GC_MAX] [--output OUTPUT]
+
+optional arguments:
+  -h, --help            show this help message and exit
   --length LENGTH, -l LENGTH
                         Barcode length. Default: 12
-  --rejection-rate REJECTION_RATE, -r REJECTION_RATE
-                        Rate of rejection before aborting. Default: 0.85
   --amino-acid AMINO_ACID, -a AMINO_ACID
                         Generate barcodes encoding this amino acid sequence. Default: do not use.
+  --number NUMBER, -n NUMBER
+                        Number of barcodes to generate. Required.
+  --rejection-rate REJECTION_RATE, -r REJECTION_RATE
+                        Rate of rejection before aborting. Default: 0.85
+  --append APPEND       File to take a list of barcodes to extend. Default: do not use
+  --append_field APPEND_FIELD
+                        Column name or number to take barcodes from for appending. Default: 1
   --distance DISTANCE, -d DISTANCE
                         Minimum distance between barcodes. Default: 1
   --homopolymer HOMOPOLYMER, -p HOMOPOLYMER
@@ -179,6 +227,39 @@ options:
                         Minimum GC content. Default: 0.4
   --gc_max GC_MAX, -j GC_MAX
                         Maximum GC content. Default: 0.6
+  --output OUTPUT, -o OUTPUT
+                        Output file. Default: STDOUT
+```
+
+```bash
+usage: monte sample [-h] --number NUMBER [--rejection-rate REJECTION_RATE] [--append APPEND] [--append_field APPEND_FIELD] [--distance DISTANCE] [--homopolymer HOMOPOLYMER] [--levenshtein] [--color]
+                    [--gc_min GC_MIN] [--gc_max GC_MAX] [--field FIELD] [--output OUTPUT]
+                    [input]
+
+positional arguments:
+  input                 Input file. Default: STDIN.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --number NUMBER, -n NUMBER
+                        Number of barcodes to generate. Required.
+  --rejection-rate REJECTION_RATE, -r REJECTION_RATE
+                        Rate of rejection before aborting. Default: 0.85
+  --append APPEND       File to take a list of barcodes to extend. Default: do not use
+  --append_field APPEND_FIELD
+                        Column name or number to take barcodes from for appending. Default: 1
+  --distance DISTANCE, -d DISTANCE
+                        Minimum distance between barcodes. Default: 1
+  --homopolymer HOMOPOLYMER, -p HOMOPOLYMER
+                        Maximum homopolymer length. Default: 3
+  --levenshtein, -e     Use Levenshtein distance. Otherwise using Hamming diatnce. Default: False
+  --color, -c           Check optimal Illumina color balance. Default: False
+  --gc_min GC_MIN, -g GC_MIN
+                        Minimum GC content. Default: 0.4
+  --gc_max GC_MAX, -j GC_MAX
+                        Maximum GC content. Default: 0.6
+  --field FIELD, -f FIELD
+                        Column name or number for barcode sequences. Default: 1
   --output OUTPUT, -o OUTPUT
                         Output file. Default: STDOUT
 ```

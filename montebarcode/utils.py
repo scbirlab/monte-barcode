@@ -8,13 +8,23 @@ import sys
 
 import yaml
 
-_data_path = os.path.join(os.path.dirname(__file__), 
-                          'codons.yml')
+def _load_codons() -> Mapping:
 
-with open(_data_path, 'r') as f:
-    _CODONS = yaml.safe_load(f)
+    _data_path = os.path.join(os.path.dirname(__file__), 
+                            'codons.yml')
 
-_CODONS['X'] = list(set(reduce(operator.add, list(_CODONS.values()))))
+    with open(_data_path, 'r') as f:
+        codons = yaml.safe_load(f)
+
+    codons['X'] = list(set(reduce(operator.add, list(codons.values()))))
+
+    return codons
+
+
+def _print_err(*args, **kwargs) -> None:
+
+    return print(*args, **kwargs, file=sys.stderr)
+
 
 def pprint_dict(x: Mapping, 
                 message: str) -> None:
@@ -22,7 +32,8 @@ def pprint_dict(x: Mapping,
     key_val_str = (f'{key}: {val:.2f}' if isinstance(val, float) else f'{key}: {val}'
                    for key, val in x.items())
 
-    print(f'{message}:\n\t' + '\n\t'.join(key_val_str),
-          file=sys.stderr)
+    _print_err(f'{message}:\n\t' + '\n\t'.join(key_val_str))
     
     return None
+
+_CODONS = _load_codons()

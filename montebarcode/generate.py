@@ -1,8 +1,12 @@
 """Functions for generating random barcodes."""
 
-from collections.abc import Generator, Iterable
+from __future__ import annotations
+
+from typing import Union
+from collections.abc import Generator, Iterable, Mapping, Sequence
+from collections import Counter
 from functools import reduce
-from itertools import product
+from itertools import groupby, product
 import operator
 from random import choices, sample
 
@@ -10,8 +14,56 @@ import streq as sq
 
 from .utils import _CODONS
 
+def _tmat(x: Iterable[str]) -> Mapping:
+    
+    xy = sorted(zip(*x), 
+                key=lambda x: x[0])
+    
+    counter = {key: Counter(following for _, following in group) 
+               for key, group in groupby(xy, lambda x: x[0])}
 
-def codon_barcodes(seq: str, ordered: bool = False) -> Generator[str]:
+    return [{key: (tuple(c.keys()), tuple(c.values())) for key, c in counter.items()}]
+
+
+def transition_matrix(x: Sequence[str]) -> Sequence[Mapping]:
+
+    """Generate transition frequencies from one item to the next in a sequence.
+    
+    Counts the occurence of the next letter conditioned on the preceding letter.
+
+    Parameters
+    ----------
+    x : Sequence[str]
+        List of strings to take transition frequencies from.
+
+    Returns
+    -------
+    tuple
+        A length-n tuple, where n is the minimum length of x. Each item is a 
+        2-tuple containing the next possible letters and their frequencies.
+
+    Examples
+    --------
+    >>> transition_matrix(['ATC', 'ATG'])  # doctest: +NORMALIZE_WHITESPACE
+    ({None: (('A',), (2,))}, {'A': (('T',), (2,))}, {'T': (('C', 'G'), (1, 1))})
+    >>> transition_matrix(['ATC', 'CTG'])  # doctest: +NORMALIZE_WHITESPACE
+    ({None: (('A', 'C'), (1, 1))}, {'A': (('T',), (1,)), 'C': (('T',), (1,))}, {'T': (('C', 'G'), (1, 1))})
+    >>> transition_matrix(['ATC', 'CAG'])  # doctest: +NORMALIZE_WHITESPACE
+    ({None: (('A', 'C'), (1, 1))}, {'A': (('T',), (1,)), 'C': (('A',), (1,))}, {'A': (('G',), (1,)), 'T': (('C',), (1,))})
+    
+    """
+
+    initial = Counter(_x[0] for _x in x)
+    initial = [{None: (tuple(initial.keys()), tuple(initial.values()))}]
+
+    preceding = zip(*x)
+    following = zip(*(_x[1:] for _x in x))
+
+    return tuple(reduce(operator.add, map(_tmat, zip(preceding, following)), initial))
+
+
+def codon_barcodes(seq: str, 
+                   ordered: bool = False) -> Generator[str]:
 
     """Generate a stream of barcodes encoding an amino
     acid sequence.
@@ -67,7 +119,7 @@ def codon_barcodes(seq: str, ordered: bool = False) -> Generator[str]:
 
 
 def infinite_barcodes(length: int = 12,
-                      alphabet: Iterable[str] = sq.sequences.DNA,
+                      alphabet: Union[Iterable[str], Iterable[Mapping]] = sq.sequences.DNA,
                       check_used: bool = True) -> Generator[str]:
 
     """Generate an stream of random barcodes by 
@@ -93,8 +145,12 @@ def infinite_barcodes(length: int = 12,
 
     Examples
     --------
-    >>> sorted(infinite_barcodes(2))  # doctest: +SKIP
-    ['AA', 'AG', 'AG', 'AT', 'CA', 'CA', 'CA', 'CC', 'CG', 'CT', 'GC', 'GG', 'GT', 'TA', 'TC', 'TG']
+    >>> sorted(infinite_barcodes(2))  # doctest: +NORMALIZE_WHITESPACE
+    ['AA', 'AC', 'AG', 'AT', 'CA', 'CC', 'CG', 'CT', 'GA', 'GC', 'GG', 'GT', 'TA', 'TC', 'TG', 'TT']
+    >>> sorted(infinite_barcodes(2, alphabet='cats'))  # doctest: +NORMALIZE_WHITESPACE
+    ['aa', 'ac', 'as', 'at', 'ca', 'cc', 'cs', 'ct', 'sa', 'sc', 'ss', 'st', 'ta', 'tc', 'ts', 'tt']
+    >>> sorted(infinite_barcodes(2, alphabet=transition_matrix(['ATCG', 'ATTT'])))  # doctest: +NORMALIZE_WHITESPACE
+    ['AT']
     >>> for bc in infinite_barcodes(20, check_used=False):  # doctest: +SKIP
     ...     print(bc)
     ...     break
@@ -102,16 +158,41 @@ def infinite_barcodes(length: int = 12,
     ATCAGTCGTCACACTAGTTA
 
     """
-
-    n_combos = len(alphabet) ** length
+    
     combos_tried = set()
+
+    if isinstance(alphabet[0], str):
+        
+        ones = (1., ) * len(alphabet)
+        alphabet = (({None: (alphabet, ones)},) + 
+                    tuple({letter: (alphabet, ones) for letter in alphabet} 
+                           for _ in range(length - 1)))
+        
+    alphabet = alphabet[:length]
+    n_combos = reduce(operator.mul, 
+                      (max(len(letters) for _, (letters, _) in position.items()) 
+                       for position in alphabet))
 
     while len(combos_tried) < n_combos or not check_used:
 
-        this_sample = ''.join(choices(alphabet, k=length))
+        this_sample = []
+        letter = None
 
-        if not check_used or (this_sample not in combos_tried):
+        for transition_matrix in alphabet:
+            
+            letters, weights = transition_matrix[letter]
+                
+            letter = choices(letters, weights=weights, k=1).pop()
+            this_sample.append(letter)
+
+        this_sample = ''.join(this_sample)
+
+        if check_used and (this_sample not in combos_tried):
 
             combos_tried.add(this_sample)
 
-            yield ''.join(choices(alphabet, k=length))
+            yield this_sample
+
+        elif not check_used:
+
+            yield this_sample

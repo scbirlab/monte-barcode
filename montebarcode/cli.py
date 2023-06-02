@@ -234,15 +234,14 @@ def generate(args: argparse.Namespace) -> None:
             check_used = False
             # TODO: Currently is an upper limit; make accurate.
             combinations = reduce(operator.mul, 
-                                  (len(letters) for position in alphabet 
-                                   for key, (letters, _) in position.items() 
-                                   if key is not None))
+                                  (max(len(letters) for _, (letters, _) in position.items()) 
+                                   for position in alphabet))
         else:
 
             length = args.length
             alphabet = sq.sequences.DNA
             alphabet_length = len(alphabet)
-            check_used = False
+            check_used = True
             combinations = alphabet_length ** length
 
         _print_err(f'Requested barcodes with length {length},',

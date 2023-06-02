@@ -104,7 +104,7 @@ def _checker(args: argparse.Namespace,
     
     if len(barcodes) < n:
 
-        print(f'Could only generate {len(barcodes)} barcodes,',
+        print(f'WARNING: Could only generate {len(barcodes)} barcodes,',
               f'but {n} were requested.',
               'You might need to try different settings.',
               file=sys.stderr)
@@ -129,12 +129,13 @@ def _check_permutations(barcodes: Sequence[str],
                             total=n_permutations):
 
         try:
-            fail_tally, _, result = checks.make_checks(constant + list(permutation),
-                                                n=len(permutation),
-                                                max_rejection_rate=0.,
-                                                checks=checklist,
-                                                max_tries=0,
-                                                quiet=True)
+            (fail_tally, _, 
+             result) = checks.make_checks(constant + list(permutation),
+                                          n=len(permutation),
+                                          max_rejection_rate=0.,
+                                          checks=checklist,
+                                          max_tries=0,
+                                          quiet=True)
         except ValueError:
 
             pass
@@ -162,11 +163,11 @@ def sort_barcodes(args: argparse.Namespace) -> None:
     try:
         
         _, _, barcodes = checks.make_checks(barcode_list,
-                                              n=len(barcode_list),
-                                              max_rejection_rate=0.,
-                                              checks=checklist,
-                                              max_tries=0,
-                                              quiet=True)
+                                            n=len(barcode_list),
+                                            max_rejection_rate=0.,
+                                            checks=checklist,
+                                            max_tries=0,
+                                            quiet=True)
         
     except ValueError:
         
@@ -212,7 +213,8 @@ def generate(args: argparse.Namespace) -> None:
 
         invalid_aa = [aa for aa in args.amino_acid if aa not in _CODONS]
 
-        assert len(invalid_aa) == 0, "The following amino acids are invalid: {}".format(", ".join(invalid_aa))
+        assert len(invalid_aa) == 0, \
+            "The following amino acids are invalid: {}".format(", ".join(invalid_aa))
 
         length = len(args.amino_acid) * 3
         combinations = reduce(operator.mul, (len(_CODONS[aa]) for aa in args.amino_acid))
@@ -225,6 +227,7 @@ def generate(args: argparse.Namespace) -> None:
     else:
 
         if args.subcommand == 'sample':
+
             barcode_list = _reader(args.input, args.field)
             alphabet = transition_matrix(barcode_list)
             length = len(alphabet)
@@ -236,6 +239,7 @@ def generate(args: argparse.Namespace) -> None:
                                    for key, (letters, _) in position.items() 
                                    if key is not None))
         else:
+
             length = args.length
             alphabet = sq.sequences.DNA
             alphabet_length = len(alphabet)
@@ -252,7 +256,8 @@ def generate(args: argparse.Namespace) -> None:
     
     assert combinations > args.number,\
             f'There are not {args.number} unique {length}-mers. '\
-            f'Maximum is {combinations}.'
+            f'Maximum is {combinations}. You might need to try'\
+            'different settings.'
 
     barcodes = _checker(args, barcodes)
 
@@ -280,9 +285,9 @@ def main() -> None:
                                   help='Sort barcode list for optimal color balance.')
     sort.set_defaults(func=sort_barcodes)
     sample = subcommands.add_parser('sample', 
-                                  help='Generate barcode list by sampling nucleotides from an existing list of sequences.')
+                                    help='Generate barcode list by sampling nucleotides '
+                                         'from an existing list of sequences.')
     sample.set_defaults(func=generate)
-    
    
     barcode.add_argument('--length', '-l', 
                          type=int, default=12,

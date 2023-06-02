@@ -14,7 +14,6 @@ import streq as sq
 
 from .utils import _CODONS
 
-
 def _tmat(x: Iterable[str]) -> Mapping:
     
     xy = sorted(zip(*x), 
@@ -61,7 +60,6 @@ def transition_matrix(x: Sequence[str]) -> Sequence[Mapping]:
     following = zip(*(_x[1:] for _x in x))
 
     return tuple(reduce(operator.add, map(_tmat, zip(preceding, following)), initial))
-
 
 
 def codon_barcodes(seq: str, 
@@ -147,8 +145,12 @@ def infinite_barcodes(length: int = 12,
 
     Examples
     --------
-    >>> sorted(infinite_barcodes(2))  # doctest: +SKIP
-    ['AA', 'AG', 'AG', 'AT', 'CA', 'CA', 'CA', 'CC', 'CG', 'CT', 'GC', 'GG', 'GT', 'TA', 'TC', 'TG']
+    >>> sorted(infinite_barcodes(2))  # doctest: +NORMALIZE_WHITESPACE
+    ['AA', 'AC', 'AG', 'AT', 'CA', 'CC', 'CG', 'CT', 'GA', 'GC', 'GG', 'GT', 'TA', 'TC', 'TG', 'TT']
+    >>> sorted(infinite_barcodes(2, alphabet='cats'))  # doctest: +NORMALIZE_WHITESPACE
+    ['aa', 'ac', 'as', 'at', 'ca', 'cc', 'cs', 'ct', 'sa', 'sc', 'ss', 'st', 'ta', 'tc', 'ts', 'tt']
+    >>> sorted(infinite_barcodes(2, alphabet=transition_matrix(['ATCG', 'ATTT'])))  # doctest: +NORMALIZE_WHITESPACE
+    ['AT']
     >>> for bc in infinite_barcodes(20, check_used=False):  # doctest: +SKIP
     ...     print(bc)
     ...     break
@@ -156,19 +158,20 @@ def infinite_barcodes(length: int = 12,
     ATCAGTCGTCACACTAGTTA
 
     """
+    
     combos_tried = set()
 
     if isinstance(alphabet[0], str):
-
-        alphabet = (({None: (alphabet, [1.] * len(alphabet))},) + 
-                    tuple({letter: (alphabet, [1.] * len(alphabet)) for letter in alphabet} 
+        
+        ones = (1., ) * len(alphabet)
+        alphabet = (({None: (alphabet, ones)},) + 
+                    tuple({letter: (alphabet, ones) for letter in alphabet} 
                            for _ in range(length - 1)))
         
-
+    alphabet = alphabet[:length]
     n_combos = reduce(operator.mul, 
-                      (len(letters) for position in alphabet 
-                       for key, (letters, _) in position.items() 
-                       if key is not None))
+                      (max(len(letters) for _, (letters, _) in position.items()) 
+                       for position in alphabet))
 
     while len(combos_tried) < n_combos or not check_used:
 
@@ -184,12 +187,12 @@ def infinite_barcodes(length: int = 12,
 
         this_sample = ''.join(this_sample)
 
-        if not check_used or (this_sample not in combos_tried):
+        if check_used and (this_sample not in combos_tried):
 
             combos_tried.add(this_sample)
 
             yield this_sample
 
-        else:
+        elif not check_used:
 
-            continue
+            yield this_sample

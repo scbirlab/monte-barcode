@@ -1,6 +1,6 @@
 [project]
 name = "monte-barcode"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
   { name="Eachan Johnson", email="eachan.johnson@crick.ac.uk" },
 ]
@@ -8,7 +8,7 @@ description = "Generating sets of random DNA sequences optimized for use in high
 readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
-keywords = ["barcodes", "sequencing", "science", "assay"]
+keywords = ["barcodes", "sequencing", "science", "assay", "biotechnology"]
 
 classifiers = [  
   
@@ -24,6 +24,8 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3 :: Only",
 ]
 

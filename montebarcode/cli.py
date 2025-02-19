@@ -16,8 +16,8 @@ import nemony as nm
 import streq as sq
 from tqdm import tqdm
 
+from . import checks, __version__
 from .generate import codon_barcodes, infinite_barcodes, transition_matrix
-from . import checks
 from .utils import _print_err, pprint_dict, _CODONS
 
 def _reader(input: TextIO, 

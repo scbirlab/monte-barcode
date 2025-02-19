@@ -33,7 +33,7 @@ def _reader(input: TextIO,
     barcode_list = [row[key] for row in infile]
     alphabet_used = set(letter for bc in barcode_list for letter in list(bc))
 
-    assert all(letter in sq.sequences.DNA for letter in alphabet_used),\
+    assert all(letter.upper() in sq.sequences.DNA for letter in alphabet_used),\
                (f"ERROR: Letters other than {sq.sequences.DNA} are "
                 f"used in column {field} of {input.name}")
     
